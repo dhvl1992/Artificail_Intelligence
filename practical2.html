@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual IoT Smart Building Lab</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto 1fr;
+            gap: 20px;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .header {
+            grid-column: 1 / -1;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .lab-panel {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow-y: auto;
+        }
+        
+        .code-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow-y: auto;
+        }
+        
+        .building-view {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+        }
+        
+        .room {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .room.occupied {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+        }
+        
+        .room.hot {
+            border-color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.2);
+            animation: heat-pulse 2s infinite;
+        }
+        
+        .room.cool {
+            border-color: #4ecdc4;
+            background: rgba(78, 205, 196, 0.2);
+        }
+        
+        @keyframes heat-pulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(255, 107, 107, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(255, 107, 107, 0.8); }
+        }
+        
+        .room-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .room-status {
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+        
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .sensor-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #00ff88;
+            transition: all 0.3s ease;
+        }
+        
+        .sensor-card.warning {
+            border-left-color: #ffd700;
+            background: rgba(255, 215, 0, 0.1);
+        }
+        
+        .sensor-card.critical {
+            border-left-color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .sensor-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+        
+        .sensor-unit {
+            font-size: 0.8em;
+            opacity: 0.8;
+        }
+        
+        .scenario-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .scenario-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            padding: 15px 20px;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1em;
+        }
+        
+        .scenario-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .scenario-btn.active {
+            background: linear-gradient(45deg, #00ff88, #00d4aa);
+        }
+        
+        .automation-panel {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #00ff88;
+        }
+        
+        .rule-firing {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border-left: 3px solid #ffd700;
+            animation: rule-fire 0.5s ease-in-out;
+        }
+        
+        @keyframes rule-fire {
+            0% { transform: translateX(-10px); opacity: 0; }
+            100% { transform: translateX(0); opacity: 1; }
+        }
+        
+        .code-block {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .keyword {
+            color: #ff79c6;
+        }
+        
+        .string {
+            color: #f1fa8c;
+        }
+        
+        .comment {
+            color: #6272a4;
+            font-style: italic;
+        }
+        
+        .function {
+            color: #50fa7b;
+        }
+        
+        .system-status {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+        
+        .system-item {
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .system-item.active {
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid #00ff88;
+        }
+        
+        .system-item.warning {
+            background: rgba(255, 215, 0, 0.2);
+            border: 1px solid #ffd700;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: 8px;
+        }
+        
+        .status-good { background: #00ff88; }
+        .status-warning { background: #ffd700; }
+        .status-critical { background: #ff6b6b; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏠 Virtual IoT Smart Building Lab</h1>
+            <p>Production System with Real IoT Sensors - EC Engineering</p>
+        </div>
+        
+        <div class="lab-panel">
+            <h2>🏢 Smart Building Environment</h2>
+            
+            <div class="building-view">
+                <div class="room" id="room-office">
+                    <div class="room-icon">🏢</div>
+                    <div><strong>Office</strong></div>
+                    <div class="room-status" id="office-status">Normal</div>
+                </div>
+                <div class="room" id="room-meeting">
+                    <div class="room-icon">📊</div>
+                    <div><strong>Meeting Room</strong></div>
+                    <div class="room-status" id="meeting-status">Empty</div>
+                </div>
+                <div class="room" id="room-lobby">
+                    <div class="room-icon">🚪</div>
+                    <div><strong>Lobby</strong></div>
+                    <div class="room-status" id="lobby-status">Normal</div>
+                </div>
+            </div>
+            
+            <h3>📊 IoT Sensor Readings</h3>
+            <div class="sensor-grid">
+                <div class="sensor-card" id="temp-sensor">
+                    <div>Temperature</div>
+                    <div class="sensor-value" id="temp-value">24°C <span class="status-indicator status-good"></span></div>
+                    <div class="sensor-unit">DS18B20 Sensor</div>
+                </div>
+                
+                <div class="sensor-card" id="humidity-sensor">
+                    <div>Humidity</div>
+                    <div class="sensor-value" id="humidity-value">45% <span class="status-indicator status-good"></span></div>
+                    <div class="sensor-unit">DHT22 Sensor</div>
+                </div>
+                
+                <div class="sensor-card" id="motion-sensor">
+                    <div>Motion Detection</div>
+                    <div class="sensor-value" id="motion-value">NO MOTION <span class="status-indicator status-good"></span></div>
+                    <div class="sensor-unit">PIR Sensor</div>
+                </div>
+                
+                <div class="sensor-card" id="light-sensor">
+                    <div>Light Level</div>
+                    <div class="sensor-value" id="light-value">350 lux <span class="status-indicator status-good"></span></div>
+                    <div class="sensor-unit">LDR Sensor</div>
+                </div>
+                
+                <div class="sensor-card" id="occupancy-sensor">
+                    <div>Occupancy Count</div>
+                    <div class="sensor-value" id="occupancy-value">2 people <span class="status-indicator status-good"></span></div>
+                    <div class="sensor-unit">Camera System</div>
+                </div>
+                
+                <div class="sensor-card" id="air-sensor">
+                    <div>Air Quality</div>
+                    <div class="sensor-value" id="air-value">85 PPM <span class="status-indicator status-good"></span></div>
+                    <div class="sensor-unit">MQ135 Gas Sensor</div>
+                </div>
+                
+                <div class="sensor-card" id="power-sensor">
+                    <div>Power Consumption</div>
+                    <div class="sensor-value" id="power-value">850W <span class="status-indicator status-good"></span></div>
+                    <div class="sensor-unit">ACS712 Current Sensor</div>
+                </div>
+            </div>
+            
+            <h3>⚙️ Building Systems Status</h3>
+            <div class="system-status">
+                <div class="system-item" id="hvac-system">
+                    <div>🌡️</div>
+                    <div>HVAC</div>
+                    <div id="hvac-status">Auto</div>
+                </div>
+                <div class="system-item" id="lighting-system">
+                    <div>💡</div>
+                    <div>Lighting</div>
+                    <div id="lighting-status">Auto</div>
+                </div>
+                <div class="system-item" id="ventilation-system">
+                    <div>🌪️</div>
+                    <div>Ventilation</div>
+                    <div id="ventilation-status">Off</div>
+                </div>
+                <div class="system-item" id="security-system">
+                    <div>🔒</div>
+                    <div>Security</div>
+                    <div id="security-status">Armed</div>
+                </div>
+            </div>
+            
+            <h3>🧪 Test Scenarios</h3>
+            <div class="scenario-buttons">
+                <button class="scenario-btn" onclick="setScenario('normal')">🟢 Normal Day</button>
+                <button class="scenario-btn" onclick="setScenario('hot_weather')">🔥 Hot Weather</button>
+                <button class="scenario-btn" onclick="setScenario('empty_building')">🏢 Empty Building</button>
+                <button class="scenario-btn" onclick="setScenario('poor_air')">💨 Poor Air Quality</button>
+            </div>
+            
+            <div class="automation-panel" id="automation">
+                <h3>🤖 Production System Activity</h3>
+                <div id="automation-content">
+                    <p>IoT systems monitoring... Click a scenario to see automation in action!</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="code-panel">
+            <h2>💻 Code</h2>
+            <div class="code-block">
+<span class="comment"># Copy this code to Google Colab to run</span>
+
+<span class="keyword">import</span> random
+
+<span class="keyword">def</span> <span class="function">read_iot_sensors</span>():
+    <span class="string">"""Simulate reading from IoT sensors in smart building"""</span>
+    <span class="keyword">return</span> {
+        <span class="string">'temperature'</span>: 25 + random.gauss(0, 3),        <span class="comment"># °C from DS18B20</span>
+        <span class="string">'humidity'</span>: 50 + random.gauss(0, 10),         <span class="comment"># % from DHT22</span>
+        <span class="string">'motion_detected'</span>: random.choice([True, False]), <span class="comment"># PIR sensor</span>
+        <span class="string">'light_level'</span>: random.uniform(0, 1000),       <span class="comment"># Lux from LDR</span>
+        <span class="string">'occupancy_count'</span>: random.randint(0, 8),      <span class="comment"># Camera system</span>
+        <span class="string">'air_quality'</span>: random.uniform(50, 500),       <span class="comment"># PPM from MQ135</span>
+        <span class="string">'power_consumption'</span>: random.uniform(200, 2000) <span class="comment"># Watts from ACS712</span>
+    }
+
+<span class="comment"># Production system rules for IoT automation</span>
+iot_rules = [
+    {
+        <span class="string">'name'</span>: <span class="string">'hvac_cooling'</span>,
+        <span class="string">'condition'</span>: <span class="keyword">lambda</span> data: data[<span class="string">'temperature'</span>] > 26 <span class="keyword">and</span> data[<span class="string">'occupancy_count'</span>] > 0,
+        <span class="string">'action'</span>: <span class="string">'Activate HVAC cooling system'</span>,
+        <span class="string">'device'</span>: <span class="string">'HVAC_Controller'</span>,
+        <span class="string">'priority'</span>: 1
+    },
+    {
+        <span class="string">'name'</span>: <span class="string">'hvac_heating'</span>,
+        <span class="string">'condition'</span>: <span class="keyword">lambda</span> data: data[<span class="string">'temperature'</span>] < 20 <span class="keyword">and</span> data[<span class="string">'occupancy_count'</span>] > 0,
+        <span class="string">'action'</span>: <span class="string">'Activate HVAC heating system'</span>,
+        <span class="string">'device'</span>: <span class="string">'HVAC_Controller'</span>,
+        <span class="string">'priority'</span>: 1
+    },
+    {
+        <span class="string">'name'</span>: <span class="string">'lighting_auto'</span>,
+        <span class="string">'condition'</span>: <span class="keyword">lambda</span> data: data[<span class="string">'light_level'</span>] < 200 <span class="keyword">and</span> data[<span class="string">'motion_detected'</span>],
+        <span class="string">'action'</span>: <span class="string">'Turn on automatic lighting'</span>,
+        <span class="string">'device'</span>: <span class="string">'Smart_Lighting'</span>,
+        <span class="string">'priority'</span>: 2
+    },
+    {
+        <span class="string">'name'</span>: <span class="string">'energy_saving'</span>,
+        <span class="string">'condition'</span>: <span class="keyword">lambda</span> data: data[<span class="string">'occupancy_count'</span>] == 0 <span class="keyword">and</span> data[<span class="string">'power_consumption'</span>] > 500,
+        <span class="string">'action'</span>: <span class="string">'Switch to energy saving mode'</span>,
+        <span class="string">'device'</span>: <span class="string">'Power_Management'</span>,
+        <span class="string">'priority'</span>: 3
+    },
+    {
+        <span class="string">'name'</span>: <span class="string">'air_quality_control'</span>,
+        <span class="string">'condition'</span>: <span class="keyword">lambda</span> data: data[<span class="string">'air_quality'</span>] > 400,
+        <span class="string">'action'</span>: <span class="string">'Activate ventilation system'</span>,
+        <span class="string">'device'</span>: <span class="string">'Ventilation_System'</span>,
+        <span class="string">'priority'</span>: 1
+    },
+    {
+        <span class="string">'name'</span>: <span class="string">'humidity_control'</span>,
+        <span class="string">'condition'</span>: <span class="keyword">lambda</span> data: data[<span class="string">'humidity'</span>] > 70,
+        <span class="string">'action'</span>: <span class="string">'Activate dehumidifier'</span>,
+        <span class="string">'device'</span>: <span class="string">'Climate_Control'</span>,
+        <span class="string">'priority'</span>: 2
+    },
+    {
+        <span class="string">'name'</span>: <span class="string">'security_mode'</span>,
+        <span class="string">'condition'</span>: <span class="keyword">lambda</span> data: data[<span class="string">'occupancy_count'</span>] == 0 <span class="keyword">and</span> <span class="keyword">not</span> data[<span class="string">'motion_detected'</span>],
+        <span class="string">'action'</span>: <span class="string">'Activate security monitoring'</span>,
+        <span class="string">'device'</span>: <span class="string">'Security_System'</span>,
+        <span class="string">'priority'</span>: 3
+    }
+]
+
+<span class="keyword">def</span> <span class="function">run_production_system</span>():
+    <span class="string">"""Main production system function"""</span>
+    sensor_data = read_iot_sensors()
+    
+    <span class="keyword">print</span>(<span class="string">"🏠 Smart Building IoT Sensor Readings:"</span>)
+    <span class="keyword">print</span>(<span class="string">f"  Temperature: {sensor_data['temperature']:.1f}°C"</span>)
+    <span class="keyword">print</span>(<span class="string">f"  Humidity: {sensor_data['humidity']:.1f}%"</span>)
+    <span class="keyword">print</span>(<span class="string">f"  Motion: {'DETECTED' if sensor_data['motion_detected'] else 'NONE'}"</span>)
+    <span class="keyword">print</span>(<span class="string">f"  Light Level: {sensor_data['light_level']:.0f} lux"</span>)
+    <span class="keyword">print</span>(<span class="string">f"  Occupancy: {sensor_data['occupancy_count']} people"</span>)
+    <span class="keyword">print</span>(<span class="string">f"  Air Quality: {sensor_data['air_quality']:.0f} PPM"</span>)
+    <span class="keyword">print</span>(<span class="string">f"  Power Usage: {sensor_data['power_consumption']:.0f} W"</span>)
+    
+    <span class="keyword">print</span>(<span class="string">"\n🤖 Production System Processing:"</span>)
+    
+    <span class="comment"># Sort rules by priority</span>
+    active_rules = [rule <span class="keyword">for</span> rule <span class="keyword">in</span> iot_rules <span class="keyword">if</span> rule[<span class="string">'condition'</span>](sensor_data)]
+    active_rules.sort(key=<span class="keyword">lambda</span> x: x[<span class="string">'priority'</span>])
+    
+    <span class="keyword">if</span> active_rules:
+        <span class="keyword">for</span> rule <span class="keyword">in</span> active_rules:
+            <span class="keyword">print</span>(<span class="string">f"🔥 Rule '{rule['name']}' fired!"</span>)
+            <span class="keyword">print</span>(<span class="string">f"   Device: {rule['device']}"</span>)
+            <span class="keyword">print</span>(<span class="string">f"   Action: {rule['action']}"</span>)
+            <span class="keyword">print</span>(<span class="string">f"   Priority: {rule['priority']}"</span>)
+            <span class="keyword">print</span>(<span class="string">"-" * 50</span>)
+    <span class="keyword">else</span>:
+        <span class="keyword">print</span>(<span class="string">"✅ All systems normal - no automation required"</span>)
+    
+    <span class="keyword">return</span> len(active_rules)
+
+<span class="comment"># Simulate building operation over time</span>
+<span class="keyword">print</span>(<span class="string">"🏢 SMART BUILDING AUTOMATION SIMULATION"</span>)
+<span class="keyword">print</span>(<span class="string">"=" * 60</span>)
+
+<span class="keyword">for</span> hour <span class="keyword">in</span> range(1, 5):
+    <span class="keyword">print</span>(<span class="string">f"\n⏰ Hour {hour} - Building Status Check"</span>)
+    <span class="keyword">print</span>(<span class="string">"=" * 40</span>)
+    
+    actions_taken = run_production_system()
+    <span class="keyword">print</span>(<span class="string">f"\nTotal automation actions: {actions_taken}"</span>)
+    
+    <span class="keyword">if</span> hour < 4:
+        <span class="keyword">print</span>(<span class="string">"\n⏳ Waiting for next hour..."</span>)
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables for IoT simulation
+        let currentScenario = 'normal';
+        let sensorData = {
+            temperature: 24,
+            humidity: 45,
+            motion_detected: false,
+            light_level: 350,
+            occupancy_count: 2,
+            air_quality: 85,
+            power_consumption: 850
+        };
+
+        // System states
+        let systemStates = {
+            hvac: 'auto',
+            lighting: 'auto',
+            ventilation: 'off',
+            security: 'armed'
+        };
+
+        // Production system rules
+        const iotRules = [
+            {
+                name: 'hvac_cooling',
+                condition: (data) => data.temperature > 26 && data.occupancy_count > 0,
+                action: 'Activate HVAC cooling system',
+                device: 'HVAC_Controller',
+                priority: 1,
+                systemUpdate: () => { systemStates.hvac = 'cooling'; }
+            },
+            {
+                name: 'hvac_heating',
+                condition: (data) => data.temperature < 20 && data.occupancy_count > 0,
+                action: 'Activate HVAC heating system',
+                device: 'HVAC_Controller',
+                priority: 1,
+                systemUpdate: () => { systemStates.hvac = 'heating'; }
+            },
+            {
+                name: 'lighting_auto',
+                condition: (data) => data.light_level < 200 && data.motion_detected,
+                action: 'Turn on automatic lighting',
+                device: 'Smart_Lighting',
+                priority: 2,
+                systemUpdate: () => { systemStates.lighting = 'on'; }
+            },
+            {
+                name: 'energy_saving',
+                condition: (data) => data.occupancy_count === 0 && data.power_consumption > 500,
+                action: 'Switch to energy saving mode',
+                device: 'Power_Management',
+                priority: 3,
+                systemUpdate: () => { 
+                    systemStates.lighting = 'dimmed';
+                    sensorData.power_consumption *= 0.7;
+                }
+            },
+            {
+                name: 'air_quality_control',
+                condition: (data) => data.air_quality > 400,
+                action: 'Activate ventilation system',
+                device: 'Ventilation_System',
+                priority: 1,
+                systemUpdate: () => { systemStates.ventilation = 'active'; }
+            },
+            {
+                name: 'humidity_control',
+                condition: (data) => data.humidity > 70,
+                action: 'Activate dehumidifier',
+                device: 'Climate_Control',
+                priority: 2,
+                systemUpdate: () => { systemStates.hvac = 'dehumidifying'; }
+            },
+            {
+                name: 'security_mode',
+                condition: (data) => data.occupancy_count === 0 && !data.motion_detected,
+                action: 'Activate security monitoring',
+                device: 'Security_System',
+                priority: 3,
+                systemUpdate: () => { systemStates.security = 'monitoring'; }
+            }
+        ];
+
+        // Scenario configurations
+        const scenarios = {
+            normal: {
+                temperature: 24,
+                humidity: 45,
+                motion_detected: false,
+                light_level: 350,
+                occupancy_count: 2,
+                air_quality: 85,
+                power_consumption: 850
+            },
+            hot_weather: {
+                temperature: 30,
+                humidity: 65,
+                motion_detected: true,
+                light_level: 800,
+                occupancy_count: 5,
+                air_quality: 120,
+                power_consumption: 1200
+            },
+            empty_building: {
+                temperature: 22,
+                humidity: 40,
+                motion_detected: false,
+                light_level: 150,
+                occupancy_count: 0,
+                air_quality: 60,
+                power_consumption: 600
+            },
+            poor_air: {
+                temperature: 25,
+                humidity: 75,
+                motion_detected: true,
+                light_level: 300,
+                occupancy_count: 3,
+                air_quality: 450,
+                power_consumption: 900
+            }
+        };
+
+        function updateSensorDisplay() {
+            // Temperature sensor
+            const tempCard = document.getElementById('temp-sensor');
+            const tempValue = document.getElementById('temp-value');
+            let tempClass = 'status-good';
+            if (sensorData.temperature > 28) tempClass = 'status-critical';
+            else if (sensorData.temperature > 26 || sensorData.temperature < 20) tempClass = 'status-warning';
+            
+            tempValue.innerHTML = `${sensorData.temperature.toFixed(1)}°C <span class="status-indicator ${tempClass}"></span>`;
+            tempCard.className = tempClass === 'status-critical' ? 'sensor-card critical' : 
+                               tempClass === 'status-warning' ? 'sensor-card warning' : 'sensor-card';
+
+            // Humidity sensor
+            const humidityValue = document.getElementById('humidity-value');
+            const humidityClass = sensorData.humidity > 70 ? 'status-warning' : 'status-good';
+            humidityValue.innerHTML = `${sensorData.humidity.toFixed(0)}% <span class="status-indicator ${humidityClass}"></span>`;
+
+            // Motion sensor
+            const motionValue = document.getElementById('motion-value');
+            const motionStatus = sensorData.motion_detected ? 'DETECTED' : 'NO MOTION';
+            const motionClass = sensorData.motion_detected ? 'status-warning' : 'status-good';
+            motionValue.innerHTML = `${motionStatus} <span class="status-indicator ${motionClass}"></span>`;
+
+            // Light sensor
+            const lightValue = document.getElementById('light-value');
+            const lightClass = sensorData.light_level < 200 ? 'status-warning' : 'status-good';
+            lightValue.innerHTML = `${sensorData.light_level.toFixed(0)} lux <span class="status-indicator ${lightClass}"></span>`;
+
+            // Occupancy sensor
+            const occupancyValue = document.getElementById('occupancy-value');
+            const occupancyClass = sensorData.occupancy_count > 0 ? 'status-warning' : 'status-good';
+            occupancyValue.innerHTML = `${sensorData.occupancy_count} people <span class="status-indicator ${occupancyClass}"></span>`;
+
+            // Air quality sensor
+            const airCard = document.getElementById('air-sensor');
+            const airValue = document.getElementById('air-value');
+            let airClass = 'status-good';
+            if (sensorData.air_quality > 400) airClass = 'status-critical';
+            else if (sensorData.air_quality > 200) airClass = 'status-warning';
+            
+            airValue.innerHTML = `${sensorData.air_quality.toFixed(0)} PPM <span class="status-indicator ${airClass}"></span>`;
+            airCard.className = airClass === 'status-critical' ? 'sensor-card critical' : 
+                              airClass === 'status-warning' ? 'sensor-card warning' : 'sensor-card';
+
+            // Power sensor
+            const powerValue = document.getElementById('power-value');
+            const powerClass = sensorData.power_consumption > 1500 ? 'status-warning' : 'status-good';
+            powerValue.innerHTML = `${sensorData.power_consumption.toFixed(0)}W <span class="status-indicator ${powerClass}"></span>`;
+
+            updateBuildingView();
+            updateSystemStatus();
+        }
+
+        function updateBuildingView() {
+            // Update room statuses based on sensor data
+            const office = document.getElementById('room-office');
+            const meeting = document.getElementById('room-meeting');
+            const lobby = document.getElementById('room-lobby');
+
+            // Office room
+            office.className = 'room';
+            if (sensorData.occupancy_count > 0) {
+                office.classList.add('occupied');
+                document.getElementById('office-status').textContent = `${sensorData.occupancy_count} people`;
+            } else {
+                document.getElementById('office-status').textContent = 'Empty';
+            }
+            
+            if (sensorData.temperature > 28) {
+                office.classList.add('hot');
+            } else if (sensorData.temperature < 20) {
+                office.classList.add('cool');
+            }
+
+            // Meeting room
+            meeting.className = 'room';
+            if (sensorData.motion_detected) {
+                meeting.classList.add('occupied');
+                document.getElementById('meeting-status').textContent = 'In Use';
+            } else {
+                document.getElementById('meeting-status').textContent = 'Available';
+            }
+
+            // Lobby
+            lobby.className = 'room';
+            if (sensorData.air_quality > 400) {
+                lobby.classList.add('hot'); // Reuse hot styling for poor air quality
+                document.getElementById('lobby-status').textContent = 'Poor Air';
+            } else {
+                document.getElementById('lobby-status').textContent = 'Normal';
+            }
+        }
+
+        function updateSystemStatus() {
+            // HVAC system
+            const hvacSystem = document.getElementById('hvac-system');
+            const hvacStatus = document.getElementById('hvac-status');
+            hvacSystem.className = 'system-item';
+            
+            if (systemStates.hvac === 'cooling') {
+                hvacSystem.classList.add('active');
+                hvacStatus.textContent = 'Cooling';
+            } else if (systemStates.hvac === 'heating') {
+                hvacSystem.classList.add('active');
+                hvacStatus.textContent = 'Heating';
+            } else if (systemStates.hvac === 'dehumidifying') {
+                hvacSystem.classList.add('warning');
+                hvacStatus.textContent = 'Dehumid';
+            } else {
+                hvacStatus.textContent = 'Auto';
+            }
+
+            // Lighting system
+            const lightingSystem = document.getElementById('lighting-system');
+            const lightingStatus = document.getElementById('lighting-status');
+            lightingSystem.className = 'system-item';
+            
+            if (systemStates.lighting === 'on') {
+                lightingSystem.classList.add('active');
+                lightingStatus.textContent = 'On';
+            } else if (systemStates.lighting === 'dimmed') {
+                lightingSystem.classList.add('warning');
+                lightingStatus.textContent = 'Dimmed';
+            } else {
+                lightingStatus.textContent = 'Auto';
+            }
+
+            // Ventilation system
+            const ventilationSystem = document.getElementById('ventilation-system');
+            const ventilationStatus = document.getElementById('ventilation-status');
+            ventilationSystem.className = 'system-item';
+            
+            if (systemStates.ventilation === 'active') {
+                ventilationSystem.classList.add('active');
+                ventilationStatus.textContent = 'Active';
+            } else {
+                ventilationStatus.textContent = 'Off';
+            }
+
+            // Security system
+            const securitySystem = document.getElementById('security-system');
+            const securityStatus = document.getElementById('security-status');
+            securitySystem.className = 'system-item';
+            
+            if (systemStates.security === 'monitoring') {
+                securitySystem.classList.add('warning');
+                securityStatus.textContent = 'Monitor';
+            } else {
+                securityStatus.textContent = 'Armed';
+            }
+        }
+
+        function runProductionSystem() {
+            const automationContent = document.getElementById('automation-content');
+            let output = '<div style="font-family: monospace; font-size: 0.9em;">';
+            
+            output += '<div style="color: #6272a4; margin-bottom: 10px;">📊 Current IoT sensor readings:</div>';
+            output += `<div style="margin-left: 20px; margin-bottom: 15px;">
+                Temperature: ${sensorData.temperature.toFixed(1)}°C<br>
+                Humidity: ${sensorData.humidity.toFixed(0)}%<br>
+                Motion: ${sensorData.motion_detected ? 'DETECTED' : 'NONE'}<br>
+                Light Level: ${sensorData.light_level.toFixed(0)} lux<br>
+                Occupancy: ${sensorData.occupancy_count} people<br>
+                Air Quality: ${sensorData.air_quality.toFixed(0)} PPM<br>
+                Power Usage: ${sensorData.power_consumption.toFixed(0)} W
+            </div>`;
+
+            output += '<div style="color: #6272a4; margin-bottom: 10px;">🤖 Production system processing:</div>';
+
+            // Reset system states
+            systemStates = {
+                hvac: 'auto',
+                lighting: 'auto',
+                ventilation: 'off',
+                security: 'armed'
+            };
+
+            let rulesFired = [];
+            
+            // Check each rule
+            for (const rule of iotRules) {
+                if (rule.condition(sensorData)) {
+                    rulesFired.push(rule);
+                    if (rule.systemUpdate) {
+                        rule.systemUpdate();
+                    }
+                }
+            }
+
+            if (rulesFired.length > 0) {
+                // Sort by priority
+                rulesFired.sort((a, b) => a.priority - b.priority);
+                
+                rulesFired.forEach((rule, index) => {
+                    output += `<div class="rule-firing" style="margin: 10px 0; padding: 12px; background: rgba(255, 215, 0, 0.1); border-left: 3px solid #ffd700; border-radius: 8px;">
+                        <div style="color: #ffd700; font-weight: bold;">🔥 Rule "${rule.name}" fired!</div>
+                        <div style="margin: 5px 0; color: #50fa7b;">📱 Device: ${rule.device}</div>
+                        <div style="color: #8be9fd;">⚙️ Action: ${rule.action}</div>
+                        <div style="color: #ffb86c;">🔸 Priority: ${rule.priority}</div>
+                    </div>`;
+                });
+            } else {
+                output += '<div style="color: #50fa7b; font-weight: bold; padding: 15px; background: rgba(0, 255, 136, 0.1); border-radius: 5px;">✅ All systems optimal - no automation required!</div>';
+            }
+
+            output += `<div style="margin-top: 15px; color: #bd93f9;">Total rules fired: ${rulesFired.length}</div>`;
+            output += '</div>';
+            automationContent.innerHTML = output;
+        }
+
+        function setScenario(scenario) {
+            currentScenario = scenario;
+            sensorData = { ...scenarios[scenario] };
+            
+            // Update button states
+            document.querySelectorAll('.scenario-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Add realistic sensor noise
+            sensorData.temperature += (Math.random() - 0.5) * 2;
+            sensorData.humidity += (Math.random() - 0.5) * 8;
+            sensorData.light_level += (Math.random() - 0.5) * 100;
+            sensorData.air_quality += (Math.random() - 0.5) * 30;
+            sensorData.power_consumption += (Math.random() - 0.5) * 100;
+            
+            // Keep values in realistic ranges
+            sensorData.temperature = Math.max(15, Math.min(35, sensorData.temperature));
+            sensorData.humidity = Math.max(20, Math.min(90, sensorData.humidity));
+            sensorData.light_level = Math.max(0, Math.min(1000, sensorData.light_level));
+            sensorData.air_quality = Math.max(30, Math.min(600, sensorData.air_quality));
+            sensorData.power_consumption = Math.max(100, Math.min(2500, sensorData.power_consumption));
+            
+            updateSensorDisplay();
+            
+            // Run production system after delay for visual effect
+            setTimeout(() => {
+                runProductionSystem();
+            }, 500);
+        }
+
+        // Initialize the lab
+        document.addEventListener('DOMContentLoaded', function() {
+            updateSensorDisplay();
+            runProductionSystem();
+            
+            // Add dynamic sensor fluctuations
+            setInterval(() => {
+                if (currentScenario === 'normal') {
+                    sensorData.temperature += (Math.random() - 0.5) * 0.5;
+                    sensorData.humidity += (Math.random() - 0.5) * 2;
+                    sensorData.light_level += (Math.random() - 0.5) * 20;
+                    sensorData.power_consumption += (Math.random() - 0.5) * 50;
+                    
+                    // Keep in normal ranges
+                    sensorData.temperature = Math.max(22, Math.min(26, sensorData.temperature));
+                    sensorData.humidity = Math.max(40, Math.min(55, sensorData.humidity));
+                    sensorData.light_level = Math.max(300, Math.min(400, sensorData.light_level));
+                    sensorData.power_consumption = Math.max(800, Math.min(900, sensorData.power_consumption));
+                    
+                    updateSensorDisplay();
+                }
+            }, 3000);
+        });
+    </script>
+</body>
+</html>
