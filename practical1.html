@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Network Troubleshooting Lab</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto 1fr;
+            gap: 20px;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .header {
+            grid-column: 1 / -1;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .lab-panel {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .code-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow-y: auto;
+        }
+        
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .sensor-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #00ff88;
+            transition: all 0.3s ease;
+        }
+        
+        .sensor-card.warning {
+            border-left-color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+        }
+        
+        .sensor-card.error {
+            border-left-color: #ff4757;
+            background: rgba(255, 71, 87, 0.2);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .sensor-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .sensor-unit {
+            font-size: 0.8em;
+            opacity: 0.8;
+        }
+        
+        .scenario-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .scenario-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            border: none;
+            padding: 15px 20px;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1em;
+        }
+        
+        .scenario-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .scenario-btn.active {
+            background: linear-gradient(45deg, #00ff88, #00d4aa);
+        }
+        
+        .diagnosis-panel {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #00ff88;
+        }
+        
+        .diagnosis-panel.error {
+            border-left-color: #ff4757;
+        }
+        
+        .rule-firing {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border-left: 3px solid #ffd700;
+        }
+        
+        .code-block {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .keyword {
+            color: #ff79c6;
+        }
+        
+        .string {
+            color: #f1fa8c;
+        }
+        
+        .comment {
+            color: #6272a4;
+            font-style: italic;
+        }
+        
+        .function {
+            color: #50fa7b;
+        }
+        
+        .network-diagram {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+        
+        .device {
+            text-align: center;
+            padding: 10px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .device.online {
+            background: rgba(0, 255, 136, 0.2);
+            border: 2px solid #00ff88;
+        }
+        
+        .device.offline {
+            background: rgba(255, 71, 87, 0.2);
+            border: 2px solid #ff4757;
+        }
+        
+        .device-icon {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+        
+        .connection-line {
+            height: 3px;
+            background: #00ff88;
+            margin: 0 10px;
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+        
+        .connection-line.broken {
+            background: #ff4757;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: 10px;
+        }
+        
+        .status-good { background: #00ff88; }
+        .status-warning { background: #ffd700; }
+        .status-error { background: #ff4757; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Virtual Network Troubleshooting Lab</h1>
+            <p>AI Expert System with Real Sensor Simulation - EC Engineering</p>
+        </div>
+        
+        <div class="lab-panel">
+            <h2>🌐 Network Lab Environment</h2>
+            
+            <div class="network-diagram">
+                <div class="device" id="router">
+                    <div class="device-icon">🌐</div>
+                    <div>Router</div>
+                    <div id="router-status">Online</div>
+                </div>
+                <div class="connection-line" id="cable-connection"></div>
+                <div class="device" id="computer">
+                    <div class="device-icon">💻</div>
+                    <div>Computer</div>
+                    <div id="computer-status">Connected</div>
+                </div>
+            </div>
+            
+            <h3>📊 Real-time Sensor Readings</h3>
+            <div class="sensor-grid">
+                <div class="sensor-card" id="power-sensor">
+                    <div>Router Power Status</div>
+                    <div class="sensor-value" id="power-value">ON <span class="status-indicator status-good"></span></div>
+                    <div class="sensor-unit">GPIO Digital Input</div>
+                </div>
+                
+                <div class="sensor-card" id="cable-sensor">
+                    <div>Cable Connection</div>
+                    <div class="sensor-value" id="cable-value">CONNECTED <span class="status-indicator status-good"></span></div>
+                    <div class="sensor-unit">Ethernet Link Sensor</div>
+                </div>
+                
+                <div class="sensor-card" id="signal-sensor">
+                    <div>Wi-Fi Signal Strength</div>
+                    <div class="sensor-value" id="signal-value">-45 dBm <span class="status-indicator status-good"></span></div>
+                    <div class="sensor-unit">Wi-Fi Module RSSI</div>
+                </div>
+                
+                <div class="sensor-card" id="latency-sensor">
+                    <div>Network Latency</div>
+                    <div class="sensor-value" id="latency-value">15 ms <span class="status-indicator status-good"></span></div>
+                    <div class="sensor-unit">ICMP Ping Response</div>
+                </div>
+                
+                <div class="sensor-card" id="bandwidth-sensor">
+                    <div>Bandwidth Usage</div>
+                    <div class="sensor-value" id="bandwidth-value">25% <span class="status-indicator status-good"></span></div>
+                    <div class="sensor-unit">SNMP Traffic Counter</div>
+                </div>
+                
+                <div class="sensor-card" id="error-sensor">
+                    <div>Packet Errors</div>
+                    <div class="sensor-value" id="error-value">2 <span class="status-indicator status-good"></span></div>
+                    <div class="sensor-unit">Interface Error Counter</div>
+                </div>
+            </div>
+            
+            <h3>🧪 Test Scenarios</h3>
+            <div class="scenario-buttons">
+                <button class="scenario-btn" onclick="setScenario('normal')">🟢 Normal Operation</button>
+                <button class="scenario-btn" onclick="setScenario('power_failure')">🔴 Power Failure</button>
+                <button class="scenario-btn" onclick="setScenario('cable_issue')">⚡ Cable Disconnected</button>
+                <button class="scenario-btn" onclick="setScenario('weak_signal')">📶 Weak Wi-Fi Signal</button>
+            </div>
+            
+            <div class="diagnosis-panel" id="diagnosis">
+                <h3>🧠 Expert System Diagnosis</h3>
+                <div id="diagnosis-content">
+                    <p>System ready. Click a test scenario to start diagnosis...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="code-panel">
+            <h2>💻 Code</h2>
+            <div class="code-block">
+<span class="comment"># Copy this code to Google Colab to run</span>
+
+<span class="keyword">import</span> random
+
+<span class="keyword">def</span> <span class="function">read_network_sensors</span>():
+    <span class="string">"""Simulate reading from network monitoring devices"""</span>
+    <span class="keyword">return</span> {
+        <span class="string">'router_power'</span>: random.choice([0, 1]),        <span class="comment"># GPIO digital input</span>
+        <span class="string">'cable_connected'</span>: random.choice([0, 1]),     <span class="comment"># Ethernet link sensor</span>
+        <span class="string">'signal_strength'</span>: random.uniform(-80, -20),  <span class="comment"># Wi-Fi RSSI (dBm)</span>
+        <span class="string">'ping_latency'</span>: random.uniform(5, 150),       <span class="comment"># ICMP ping (ms)</span>
+        <span class="string">'bandwidth_usage'</span>: random.uniform(10, 95),    <span class="comment"># Traffic % from SNMP</span>
+        <span class="string">'error_packets'</span>: random.randint(0, 50)        <span class="comment"># Interface error count</span>
+    }
+
+<span class="comment"># Expert system rules based on sensor data</span>
+network_rules = {
+    <span class="string">'power_failure'</span>: {
+        <span class="string">'condition'</span>: <span class="keyword">lambda</span> data: data[<span class="string">'router_power'</span>] == 0,
+        <span class="string">'diagnosis'</span>: <span class="string">'Router power failure detected'</span>,
+        <span class="string">'action'</span>: <span class="string">'Check power supply and cables'</span>
+    },
+    <span class="string">'cable_issue'</span>: {
+        <span class="string">'condition'</span>: <span class="keyword">lambda</span> data: data[<span class="string">'router_power'</span>] == 1 <span class="keyword">and</span> data[<span class="string">'cable_connected'</span>] == 0,
+        <span class="string">'diagnosis'</span>: <span class="string">'Ethernet cable disconnected'</span>,
+        <span class="string">'action'</span>: <span class="string">'Check physical connections'</span>
+    },
+    <span class="string">'weak_signal'</span>: {
+        <span class="string">'condition'</span>: <span class="keyword">lambda</span> data: data[<span class="string">'signal_strength'</span>] < -70,
+        <span class="string">'diagnosis'</span>: <span class="string">'Wi-Fi signal too weak'</span>,
+        <span class="string">'action'</span>: <span class="string">'Move closer to router or check antenna'</span>
+    },
+    <span class="string">'high_latency'</span>: {
+        <span class="string">'condition'</span>: <span class="keyword">lambda</span> data: data[<span class="string">'ping_latency'</span>] > 100,
+        <span class="string">'diagnosis'</span>: <span class="string">'Network congestion detected'</span>,
+        <span class="string">'action'</span>: <span class="string">'Check bandwidth usage and QoS settings'</span>
+    },
+    <span class="string">'packet_errors'</span>: {
+        <span class="string">'condition'</span>: <span class="keyword">lambda</span> data: data[<span class="string">'error_packets'</span>] > 20,
+        <span class="string">'diagnosis'</span>: <span class="string">'High packet error rate detected'</span>,
+        <span class="string">'action'</span>: <span class="string">'Check cable integrity and interference'</span>
+    }
+}
+
+<span class="keyword">def</span> <span class="function">diagnose_network</span>():
+    <span class="string">"""Main expert system function"""</span>
+    sensor_data = read_network_sensors()
+    
+    <span class="keyword">print</span>(<span class="string">"📊 Network Sensor Readings:"</span>)
+    <span class="keyword">print</span>(<span class="string">f"  Router Power: {'ON' if sensor_data['router_power'] else 'OFF'}"</span>)
+    <span class="keyword">print</span>(<span class="string">f"  Cable Connected: {'YES' if sensor_data['cable_connected'] else 'NO'}"</span>)
+    <span class="keyword">print</span>(<span class="string">f"  Signal Strength: {sensor_data['signal_strength']:.1f} dBm"</span>)
+    <span class="keyword">print</span>(<span class="string">f"  Ping Latency: {sensor_data['ping_latency']:.1f} ms"</span>)
+    <span class="keyword">print</span>(<span class="string">f"  Bandwidth Usage: {sensor_data['bandwidth_usage']:.1f}%"</span>)
+    <span class="keyword">print</span>(<span class="string">f"  Error Packets: {sensor_data['error_packets']}"</span>)
+    
+    <span class="keyword">print</span>(<span class="string">"\n🧠 Expert System Analysis:"</span>)
+    
+    issues_found = <span class="keyword">False</span>
+    <span class="keyword">for</span> rule_name, rule <span class="keyword">in</span> network_rules.items():
+        <span class="keyword">if</span> rule[<span class="string">'condition'</span>](sensor_data):
+            <span class="keyword">print</span>(<span class="string">f"🔥 Rule '{rule_name}' fired!"</span>)
+            <span class="keyword">print</span>(<span class="string">f"📋 Diagnosis: {rule['diagnosis']}"</span>)
+            <span class="keyword">print</span>(<span class="string">f"🔧 Action: {rule['action']}"</span>)
+            <span class="keyword">print</span>(<span class="string">"-" * 50</span>)
+            issues_found = <span class="keyword">True</span>
+    
+    <span class="keyword">if</span> <span class="keyword">not</span> issues_found:
+        <span class="keyword">print</span>(<span class="string">"✅ No issues detected - Network operating normally!"</span>)
+
+<span class="comment"># Run the expert system multiple times to see different scenarios</span>
+<span class="keyword">for</span> i <span class="keyword">in</span> range(3):
+    <span class="keyword">print</span>(<span class="string">f"\n{'='*60}"</span>)
+    <span class="keyword">print</span>(<span class="string">f"🔧 Network Diagnosis Test {i+1}"</span>)
+    <span class="keyword">print</span>(<span class="string">f"{'='*60}"</span>)
+    diagnose_network()
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables for sensor simulation
+        let currentScenario = 'normal';
+        let sensorData = {
+            router_power: 1,
+            cable_connected: 1,
+            signal_strength: -45,
+            ping_latency: 15,
+            bandwidth_usage: 25,
+            error_packets: 2
+        };
+
+        // Expert system rules
+        const networkRules = {
+            power_failure: {
+                condition: (data) => data.router_power === 0,
+                diagnosis: 'Router power failure detected',
+                action: 'Check power supply and electrical connections',
+                priority: 1
+            },
+            cable_issue: {
+                condition: (data) => data.router_power === 1 && data.cable_connected === 0,
+                diagnosis: 'Ethernet cable disconnected',
+                action: 'Check physical cable connections',
+                priority: 2
+            },
+            weak_signal: {
+                condition: (data) => data.signal_strength < -70,
+                diagnosis: 'Wi-Fi signal too weak for reliable connection',
+                action: 'Move closer to router or check antenna position',
+                priority: 3
+            },
+            high_latency: {
+                condition: (data) => data.ping_latency > 100,
+                diagnosis: 'Network congestion or routing issues',
+                action: 'Check bandwidth usage and QoS settings',
+                priority: 4
+            },
+            packet_errors: {
+                condition: (data) => data.error_packets > 20,
+                diagnosis: 'High packet error rate detected',
+                action: 'Check cable integrity and interference sources',
+                priority: 5
+            }
+        };
+
+        // Sensor scenarios
+        const scenarios = {
+            normal: {
+                router_power: 1,
+                cable_connected: 1,
+                signal_strength: -45,
+                ping_latency: 15,
+                bandwidth_usage: 25,
+                error_packets: 2
+            },
+            power_failure: {
+                router_power: 0,
+                cable_connected: 0,
+                signal_strength: -100,
+                ping_latency: null,
+                bandwidth_usage: 0,
+                error_packets: 0
+            },
+            cable_issue: {
+                router_power: 1,
+                cable_connected: 0,
+                signal_strength: -65,
+                ping_latency: null,
+                bandwidth_usage: 0,
+                error_packets: 0
+            },
+            weak_signal: {
+                router_power: 1,
+                cable_connected: 1,
+                signal_strength: -85,
+                ping_latency: 150,
+                bandwidth_usage: 15,
+                error_packets: 8
+            }
+        };
+
+        function updateSensorDisplay() {
+            // Update power sensor
+            const powerCard = document.getElementById('power-sensor');
+            const powerValue = document.getElementById('power-value');
+            const powerStatus = sensorData.router_power ? 'ON' : 'OFF';
+            const powerClass = sensorData.router_power ? 'status-good' : 'status-error';
+            
+            powerValue.innerHTML = `${powerStatus} <span class="status-indicator ${powerClass}"></span>`;
+            powerCard.className = sensorData.router_power ? 'sensor-card' : 'sensor-card error';
+
+            // Update cable sensor
+            const cableCard = document.getElementById('cable-sensor');
+            const cableValue = document.getElementById('cable-value');
+            const cableStatus = sensorData.cable_connected ? 'CONNECTED' : 'DISCONNECTED';
+            const cableClass = sensorData.cable_connected ? 'status-good' : 'status-error';
+            
+            cableValue.innerHTML = `${cableStatus} <span class="status-indicator ${cableClass}"></span>`;
+            cableCard.className = sensorData.cable_connected ? 'sensor-card' : 'sensor-card error';
+
+            // Update signal sensor
+            const signalCard = document.getElementById('signal-sensor');
+            const signalValue = document.getElementById('signal-value');
+            let signalClass = 'status-good';
+            if (sensorData.signal_strength < -70) signalClass = 'status-error';
+            else if (sensorData.signal_strength < -60) signalClass = 'status-warning';
+            
+            signalValue.innerHTML = `${sensorData.signal_strength} dBm <span class="status-indicator ${signalClass}"></span>`;
+            signalCard.className = signalClass === 'status-error' ? 'sensor-card error' : 
+                                 signalClass === 'status-warning' ? 'sensor-card warning' : 'sensor-card';
+
+            // Update latency sensor
+            const latencyCard = document.getElementById('latency-sensor');
+            const latencyValue = document.getElementById('latency-value');
+            let latencyDisplay, latencyClass;
+            
+            if (sensorData.ping_latency === null) {
+                latencyDisplay = 'TIMEOUT';
+                latencyClass = 'status-error';
+                latencyCard.className = 'sensor-card error';
+            } else {
+                latencyDisplay = `${sensorData.ping_latency} ms`;
+                latencyClass = sensorData.ping_latency > 100 ? 'status-error' : 
+                              sensorData.ping_latency > 50 ? 'status-warning' : 'status-good';
+                latencyCard.className = latencyClass === 'status-error' ? 'sensor-card error' : 
+                                       latencyClass === 'status-warning' ? 'sensor-card warning' : 'sensor-card';
+            }
+            
+            latencyValue.innerHTML = `${latencyDisplay} <span class="status-indicator ${latencyClass}"></span>`;
+
+            // Update bandwidth sensor
+            const bandwidthValue = document.getElementById('bandwidth-value');
+            const bandwidthClass = sensorData.bandwidth_usage > 80 ? 'status-warning' : 'status-good';
+            bandwidthValue.innerHTML = `${sensorData.bandwidth_usage}% <span class="status-indicator ${bandwidthClass}"></span>`;
+
+            // Update error sensor
+            const errorCard = document.getElementById('error-sensor');
+            const errorValue = document.getElementById('error-value');
+            const errorClass = sensorData.error_packets > 20 ? 'status-error' : 
+                              sensorData.error_packets > 10 ? 'status-warning' : 'status-good';
+            
+            errorValue.innerHTML = `${sensorData.error_packets} <span class="status-indicator ${errorClass}"></span>`;
+            errorCard.className = errorClass === 'status-error' ? 'sensor-card error' : 
+                                 errorClass === 'status-warning' ? 'sensor-card warning' : 'sensor-card';
+
+            // Update network diagram
+            updateNetworkDiagram();
+        }
+
+        function updateNetworkDiagram() {
+            const router = document.getElementById('router');
+            const computer = document.getElementById('computer');
+            const cableConnection = document.getElementById('cable-connection');
+            const routerStatus = document.getElementById('router-status');
+            const computerStatus = document.getElementById('computer-status');
+
+            if (sensorData.router_power === 0) {
+                router.className = 'device offline';
+                routerStatus.textContent = 'Offline';
+                cableConnection.className = 'connection-line broken';
+                computer.className = 'device offline';
+                computerStatus.textContent = 'No Connection';
+            } else if (sensorData.cable_connected === 0) {
+                router.className = 'device online';
+                routerStatus.textContent = 'Online';
+                cableConnection.className = 'connection-line broken';
+                computer.className = 'device offline';
+                computerStatus.textContent = 'Disconnected';
+            } else {
+                router.className = 'device online';
+                routerStatus.textContent = 'Online';
+                cableConnection.className = 'connection-line';
+                computer.className = 'device online';
+                computerStatus.textContent = 'Connected';
+            }
+        }
+
+        function runExpertSystem() {
+            const diagnosisContent = document.getElementById('diagnosis-content');
+            let output = '<div style="font-family: monospace; font-size: 0.9em;">';
+            
+            output += '<div style="color: #6272a4; margin-bottom: 10px;">📊 Current sensor readings:</div>';
+            output += `<div style="margin-left: 20px; margin-bottom: 15px;">
+                Router Power: ${sensorData.router_power ? 'ON (1)' : 'OFF (0)'}<br>
+                Cable Connected: ${sensorData.cable_connected ? 'YES (1)' : 'NO (0)'}<br>
+                Signal Strength: ${sensorData.signal_strength} dBm<br>
+                Ping Latency: ${sensorData.ping_latency ? sensorData.ping_latency + ' ms' : 'TIMEOUT'}<br>
+                Bandwidth Usage: ${sensorData.bandwidth_usage}%<br>
+                Error Packets: ${sensorData.error_packets}
+            </div>`;
+
+            output += '<div style="color: #6272a4; margin-bottom: 10px;">🧠 Expert system analysis:</div>';
+
+            let rulesFired = [];
+            
+            // Check each rule
+            for (const [ruleName, rule] of Object.entries(networkRules)) {
+                if (rule.condition(sensorData)) {
+                    rulesFired.push({ name: ruleName, ...rule });
+                }
+            }
+
+            if (rulesFired.length > 0) {
+                // Sort by priority
+                rulesFired.sort((a, b) => a.priority - b.priority);
+                
+                rulesFired.forEach((rule, index) => {
+                    output += `<div class="rule-firing" style="margin: 10px 0; padding: 10px; background: rgba(255, 215, 0, 0.1); border-left: 3px solid #ffd700; border-radius: 5px;">
+                        <div style="color: #ffd700; font-weight: bold;">🔥 Rule "${rule.name}" fired!</div>
+                        <div style="margin: 5px 0; color: #ff6b6b;">📋 Diagnosis: ${rule.diagnosis}</div>
+                        <div style="color: #50fa7b;">🔧 Recommended Action: ${rule.action}</div>
+                    </div>`;
+                });
+
+                document.getElementById('diagnosis').className = 'diagnosis-panel error';
+            } else {
+                output += '<div style="color: #50fa7b; font-weight: bold; padding: 15px; background: rgba(0, 255, 136, 0.1); border-radius: 5px;">✅ No issues detected - Network operating normally!</div>';
+                document.getElementById('diagnosis').className = 'diagnosis-panel';
+            }
+
+            output += '</div>';
+            diagnosisContent.innerHTML = output;
+        }
+
+        function setScenario(scenario) {
+            currentScenario = scenario;
+            sensorData = { ...scenarios[scenario] };
+            
+            // Update button states
+            document.querySelectorAll('.scenario-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Add some realistic noise to the data
+            if (scenario !== 'power_failure') {
+                sensorData.signal_strength += (Math.random() - 0.5) * 5;
+                if (sensorData.ping_latency !== null) {
+                    sensorData.ping_latency += (Math.random() - 0.5) * 10;
+                }
+                sensorData.bandwidth_usage += (Math.random() - 0.5) * 10;
+                sensorData.error_packets += Math.floor((Math.random() - 0.5) * 4);
+            }
+            
+            // Ensure values stay in realistic ranges
+            sensorData.signal_strength = Math.max(-100, Math.min(-20, sensorData.signal_strength));
+            if (sensorData.ping_latency !== null) {
+                sensorData.ping_latency = Math.max(1, sensorData.ping_latency);
+            }
+            sensorData.bandwidth_usage = Math.max(0, Math.min(100, sensorData.bandwidth_usage));
+            sensorData.error_packets = Math.max(0, sensorData.error_packets);
+            
+            updateSensorDisplay();
+            
+            // Run expert system after a brief delay for visual effect
+            setTimeout(() => {
+                runExpertSystem();
+            }, 500);
+        }
+
+        // Initialize the lab
+        document.addEventListener('DOMContentLoaded', function() {
+            updateSensorDisplay();
+            runExpertSystem();
+            
+            // Add some dynamic effects
+            setInterval(() => {
+                if (currentScenario === 'normal') {
+                    // Add small random fluctuations to normal readings
+                    sensorData.signal_strength += (Math.random() - 0.5) * 2;
+                    sensorData.ping_latency += (Math.random() - 0.5) * 3;
+                    sensorData.bandwidth_usage += (Math.random() - 0.5) * 5;
+                    
+                    // Keep in realistic ranges
+                    sensorData.signal_strength = Math.max(-60, Math.min(-30, sensorData.signal_strength));
+                    sensorData.ping_latency = Math.max(10, Math.min(30, sensorData.ping_latency));
+                    sensorData.bandwidth_usage = Math.max(15, Math.min(40, sensorData.bandwidth_usage));
+                    
+                    updateSensorDisplay();
+                }
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
